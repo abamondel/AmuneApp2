@@ -1,0 +1,139 @@
+﻿<Window
+    x:Class="AmuneApp.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:usercontrols="clr-namespace:AmuneApp.UserControls"
+    Title="Beautiful App"
+    Width="745"
+    Height="120"
+    AllowsTransparency="True"
+    Background="#00A9A9A9"
+    PreviewMouseDown="Window_PreviewMouseDown"
+    Opacity="1"
+    ShowInTaskbar="True"
+    WindowStartupLocation="Manual"
+    WindowStyle="None">
+    <Window.ContextMenu>
+
+        <ContextMenu   x:Name="appContextMenu"  >
+            <MenuItem PreviewMouseLeftButtonUp="MenuItemSentenceMouseUp" Header="Sentences" >
+                <MenuItem.Icon>
+                    <ui:SymbolIcon Margin="5,0,5,0" Symbol="TextAlignRight16" />
+                </MenuItem.Icon>
+            </MenuItem>
+             
+            
+            <Separator />
+
+            <MenuItem   PreviewMouseLeftButtonUp="ContextMenu_MouseLeftButtonUp" Header="Quit">
+                <MenuItem.Icon>
+                    <TextBlock
+     Margin="5,0,5,0"
+     FontWeight="Bold"
+     Foreground="Maroon"
+     Text="✕" />
+                </MenuItem.Icon>
+            </MenuItem >
+            
+            <Separator />
+            <MenuItem PreviewMouseLeftButtonUp="MenuItem_PreviewMouseLeftButtonUp">
+                <MenuItem.Header >
+            <CheckBox x:Name="cbStartOnStarup"  Checked="CheckBox_Checked" Unchecked="CheckBox_Unchecked" Content="Start on PC starup" />
+                </MenuItem.Header>
+            </MenuItem>
+        </ContextMenu>
+    </Window.ContextMenu>
+    <Grid>
+
+        <Popup
+            Placement="Center"
+            x:Name="addStringPopup"
+            AllowsTransparency="True"
+            
+            PopupAnimation="Fade">
+
+            <Border
+                Width="400"
+                Padding="10"
+                Background="#FFDDDDDD"
+                CornerRadius="10">
+                <StackPanel>
+                    <ScrollViewer MaxHeight="400" Padding="15">
+                        <StackPanel x:Name="popupSp">
+
+                            <StackPanel
+                                x:Name="stNewSentence"
+                                Margin="0,5,0,5"
+                                HorizontalAlignment="Stretch"
+                                Orientation="Horizontal">
+                                <TextBox
+                                    x:Name="tbAddSentence"
+                                    Width="300"
+                                    Margin="5,0,5,0"
+                                    HorizontalAlignment="Stretch"
+                                    FontSize="18"
+                                    FontWeight="SemiBold"
+                                    TextAlignment="Right"
+                                    TextChanged="tbAddSentence_TextChanged" />
+
+
+                            </StackPanel>
+                        </StackPanel>
+
+                    </ScrollViewer>
+                    <Separator x:Name="popupSeparator" Margin="0,10,0,5" />
+                    <StackPanel HorizontalAlignment="Center"  Orientation="Horizontal">
+                        <Button
+                            x:Name="btCancel"
+                            Width="100"
+                            Margin="10,5,10,5"
+                            HorizontalAlignment="Center"
+                            Click="btCancel_Click"
+                            Content="Cancel" />
+                        <ui:Button
+                        x:Name="btSaveSentence"
+                        Width="100"
+                           
+                        Margin="10,5,10,5"
+                        HorizontalAlignment="Center"
+                        Click="AddButton_Click"
+                        Content="Save" Appearance="Primary"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </Popup>
+        <StackPanel
+            x:Name="spTextGrid"
+            Margin="20"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            FlowDirection="RightToLeft"
+            Orientation="Horizontal">
+            <TextBlock
+                x:Name="sentenceTextBlock"
+                VerticalAlignment="Center"
+                FontFamily="David"
+                FontSize="64"
+                FontWeight="Bold"
+                Text=".אין שומע לי ומפסיד"
+                TextAlignment="Center">
+                <TextBlock.Foreground>
+                    <RadialGradientBrush MappingMode="RelativeToBoundingBox" SpreadMethod="Pad">
+                        <RadialGradientBrush.RelativeTransform>
+                            <TransformGroup>
+                                <ScaleTransform CenterX="0.5" CenterY="0.5" />
+                                <SkewTransform CenterX="0.5" CenterY="0.5" />
+                                <RotateTransform CenterX="0.5" CenterY="0.5" />
+                                <TranslateTransform X="0.2" />
+                            </TransformGroup>
+                        </RadialGradientBrush.RelativeTransform>
+                        <GradientStop Offset="1" Color="#FF9154FF" />
+                        <GradientStop Color="#FF1E0056" />
+                    </RadialGradientBrush>
+                </TextBlock.Foreground>
+            </TextBlock>
+        </StackPanel>
+    </Grid>
+</Window>

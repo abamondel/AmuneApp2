@@ -1,0 +1,82 @@
+﻿<Window x:Class="AmuneApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+       xmlns:usercontrols="clr-namespace:AmuneApp.UserControls"
+        Title="Beautiful App" Height="140" Width="745"
+        WindowStyle="None"
+        WindowStartupLocation="Manual"
+        MouseDown="Window_MouseDown" 
+        Closing="Window_Closing"
+        AllowsTransparency="True" Background="#00A9A9A9" Opacity="1">
+    <Window.ContextMenu >
+
+        <ContextMenu >
+            <TextBlock PreviewMouseLeftButtonUp="TextBlock_PreviewMouseLeftButtonUp">Add Pusik</TextBlock>
+            <Separator/>
+            <TextBlock PreviewMouseLeftButtonUp="ContextMenu_MouseLeftButtonUp">Quit</TextBlock>
+        </ContextMenu>
+    </Window.ContextMenu>
+    <Grid >
+        
+        <Popup  x:Name="addStringPopup" Placement="Mouse" AllowsTransparency="True" PopupAnimation="Fade">
+            
+            <Border Width="400" CornerRadius="10" Background="#FFDDDDDD" Padding="10">
+                <StackPanel   >
+                    <ScrollViewer Padding="15" MaxHeight="400" >
+                        <StackPanel Background="Purple" x:Name="popupSp">
+                            <StackPanel
+    x:Name="stNewSentence"
+    Margin="0,5,0,5"
+    HorizontalAlignment="Stretch"
+    Orientation="Horizontal">
+                                <TextBox
+        x:Name="tbAddSentence"
+        Width="300"
+        Margin="5,0,5,0"
+        HorizontalAlignment="Stretch"
+        FontSize="18"
+        FontWeight="SemiBold"
+        TextAlignment="Right"
+        TextChanged="tbAddSentence_TextChanged" />
+
+
+                            </StackPanel>
+                        </StackPanel>
+                    
+                    </ScrollViewer>
+                    <Separator x:Name="popupSeparator" Margin="0,10,0,5"/>
+                    <Button x:Name="btSaveSentence" Margin="0,5,0,5"  HorizontalAlignment="Center" Width="100" Content="Add" Click="AddButton_Click" />
+                </StackPanel>
+            </Border>
+          
+        </Popup>
+
+        <Rectangle StrokeThickness="4" x:Name="rbWindowColor"  Fill="#CCFFFFFF" RadiusX="25" RadiusY="25" >
+            <Rectangle.Stroke>
+                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                    <GradientStop Color="Black"/>
+                    <GradientStop Color="#FFD80000" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Stroke>
+        </Rectangle>
+        <StackPanel Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" x:Name="spTextGrid" FlowDirection="RightToLeft">
+            <TextBlock Text=".אין שומע לי ומפסיד" x:Name="sentenceTextBlock"  FontSize="64" FontWeight="Bold" FontFamily="David" TextAlignment="Center" VerticalAlignment="Center">
+                <TextBlock.Foreground>
+                    <RadialGradientBrush SpreadMethod="Pad" MappingMode="RelativeToBoundingBox">
+                        <RadialGradientBrush.RelativeTransform>
+                            <TransformGroup>
+                                <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                <SkewTransform CenterX="0.5" CenterY="0.5"/>
+                                <RotateTransform CenterX="0.5" CenterY="0.5"/>
+                                <TranslateTransform X="0.2"/>
+                            </TransformGroup>
+                        </RadialGradientBrush.RelativeTransform>
+                        <GradientStop Color="#FF9154FF" Offset="1"/>
+                        <GradientStop Color="#FF1E0056"/>
+                    </RadialGradientBrush>
+                </TextBlock.Foreground>
+            </TextBlock>
+        </StackPanel>
+    </Grid>
+</Window>
