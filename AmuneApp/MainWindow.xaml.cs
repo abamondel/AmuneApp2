@@ -268,21 +268,24 @@ namespace AmuneApp
         private void UpdateStartupCheckboxStatus()
         {
             using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
-            miStartOnStartup.IsChecked = key?.GetValue("AmuneApp") != null;
+            if (StartupCheckBox != null)
+                StartupCheckBox.IsChecked = key?.GetValue("AmuneApp") != null;
         }
 
-        private void miStartOnStartup_Checked(object sender, RoutedEventArgs e) => AddToStartup();
-        private void miStartOnStartup_Unchecked(object sender, RoutedEventArgs e) => RemoveFromStartup();
+        private CheckBox StartupCheckBox => miStartOnStartup.Header as CheckBox;
+
+        private void miStartOnStartup_Click(object sender, RoutedEventArgs e)
+        {
+            StartupCheckBox.IsChecked = !(StartupCheckBox.IsChecked ?? false);
+            if (StartupCheckBox.IsChecked == true)
+                AddToStartup();
+            else
+                RemoveFromStartup();
+        }
 
         private void btCancel_Click(object sender, RoutedEventArgs e)
         {
             addStringPopup.IsOpen = false;
-        }
-
-        private void MenuItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (!miStartOnStartup.IsMouseOver)
-                miStartOnStartup.IsChecked = !miStartOnStartup.IsChecked;
         }
     }
 }

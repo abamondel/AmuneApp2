@@ -13,11 +13,13 @@
         <ContextMenu>
             <TextBlock PreviewMouseLeftButtonUp="TextBlock_PreviewMouseLeftButtonUp">Add Pusik</TextBlock>
             <Separator/>
-            <MenuItem x:Name="miStartOnStartup"
-                      Header="Start on PC Startup"
-                      IsCheckable="True"
-                      Checked="miStartOnStartup_Checked"
-                      Unchecked="miStartOnStartup_Unchecked" />
+            <MenuItem x:Name="miStartOnStartup" Click="miStartOnStartup_Click">
+                <MenuItem.Header>
+                    <CheckBox Content="Start on PC Startup"
+                              IsHitTestVisible="False"
+                              VerticalAlignment="Center" />
+                </MenuItem.Header>
+            </MenuItem>
             <Separator/>
             <TextBlock PreviewMouseLeftButtonUp="ContextMenu_MouseLeftButtonUp">Quit</TextBlock>
         </ContextMenu>
