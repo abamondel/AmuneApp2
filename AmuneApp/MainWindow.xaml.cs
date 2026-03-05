@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,62 +9,142 @@ using System.Windows.Media.Animation;
 using Newtonsoft.Json;
 using AmuneApp.UserControls;
 using Microsoft.Win32;
+using Forms = System.Windows.Forms;
 
 namespace AmuneApp
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        private ObservableCollection<string> sentences = new ObservableCollection<string> {
-        "אין שומע לי ומפסיד",
-        "דע לפני מי אתה עומד",
-        "בהיתר ולא באיסור"
-        } ;
+        private ObservableCollection<string> sentences = new ObservableCollection<string>
+        {
+            "אין שומע לי ומפסיד",
+            "דע לפני מי אתה עומד",
+            "בהיתר ולא באיסור"
+        };
 
         private int currentSentenceIndex = 0;
-        public string sentecePath = @"C:\ProgramData\AmuneApp\sentences.json";
+        private readonly string sentencePath = @"C:\ProgramData\AmuneApp\sentences.json";
+        private AppSettings settings;
+        private Forms.NotifyIcon trayIcon;
+        private readonly Random random = new();
+        private bool isReallyClosing = false;
+
         public MainWindow()
         {
-            if (File.Exists(sentecePath))
-            {
-            sentences = LoadListFromFile(sentecePath);
-            }
-            else
-            {
-                System.IO.Directory.CreateDirectory(@"C:\ProgramData\AmuneApp\");
-                File.Create(sentecePath).Close();
-            }
-
+            LoadOrInitializeSentences();
+            settings = AppSettings.Load();
 
             InitializeComponent();
+            SetupTrayIcon();
+            ApplySettings();
             AnimateSentence();
             Animations.AnimateTextColor(sentenceTextBlock);
             AnimateBorderColor();
-            double screenWidth = SystemParameters.PrimaryScreenWidth;
-            double screenHeight = SystemParameters.PrimaryScreenHeight;
-
-            this.Left = (screenWidth/2) - this.Width /2;
-            this.Top = ((screenHeight/3 ) - this.Height) -  100;
-
+            RestoreWindowPosition();
             UpdateStartupCheckboxStatus();
+            CheckForUpdatesAsync();
+
             Deactivated += (s, e) => addStringPopup.IsOpen = false;
         }
-       
 
-        private ObservableCollection<string> LoadListFromFile(string sentecePath)
+        #region Initialization
+
+        private void LoadOrInitializeSentences()
         {
-            if (System.IO.File.Exists(sentecePath))
+            if (File.Exists(sentencePath))
             {
-                string json = System.IO.File.ReadAllText(sentecePath);
-                List<string> items = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(json);
-                return new ObservableCollection<string>(items);
+                var loaded = LoadListFromFile(sentencePath);
+                if (loaded.Count > 0) sentences = loaded;
             }
-            return new ObservableCollection<string>();
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(sentencePath));
+                SaveListToFile(sentences, sentencePath);
+            }
         }
 
+        private ObservableCollection<string> LoadListFromFile(string path)
+        {
+            try
+            {
+                string json = File.ReadAllText(path);
+                var items = JsonConvert.DeserializeObject<List<string>>(json);
+                return items != null ? new ObservableCollection<string>(items) : new ObservableCollection<string>();
+            }
+            catch { return new ObservableCollection<string>(); }
+        }
 
+        private void SaveListToFile(ObservableCollection<string> items, string path)
+        {
+            string json = JsonConvert.SerializeObject(items.ToList());
+            File.WriteAllText(path, json);
+        }
+
+        private void ApplySettings()
+        {
+            Opacity = settings.WindowOpacity;
+            UpdateTimerChecked();
+            UpdateOpacityChecked();
+
+            sentenceTextBlock.FontFamily = new FontFamily(settings.FontFamily);
+
+            (miShuffle.Header as CheckBox).IsChecked = settings.ShuffleMode;
+            (miDarkMode.Header as CheckBox).IsChecked = settings.DarkMode;
+            ApplyTheme();
+
+            try
+            {
+                windowBgBrush.Color = (Color)ColorConverter.ConvertFromString(settings.BackgroundColor);
+            }
+            catch { }
+        }
+
+        private void SetupTrayIcon()
+        {
+            trayIcon = new Forms.NotifyIcon
+            {
+                Icon = new System.Drawing.Icon(
+                    Application.GetResourceStream(new Uri("pack://application:,,,/Resources/app.ico")).Stream),
+                Text = "AmuneApp",
+                Visible = true
+            };
+
+            var trayMenu = new Forms.ContextMenuStrip();
+            trayMenu.Items.Add("Show / Hide", null, (s, e) => ToggleWindowVisibility());
+            trayMenu.Items.Add(new Forms.ToolStripSeparator());
+            trayMenu.Items.Add("Edit Pusikim", null, (s, e) => { Show(); Activate(); EditPusikim_Click(null, null); });
+            trayMenu.Items.Add(new Forms.ToolStripSeparator());
+            trayMenu.Items.Add("Quit", null, (s, e) => QuitApp());
+
+            trayIcon.ContextMenuStrip = trayMenu;
+            trayIcon.DoubleClick += (s, e) => ToggleWindowVisibility();
+        }
+
+        private void ToggleWindowVisibility()
+        {
+            if (IsVisible) Hide();
+            else { Show(); Activate(); }
+        }
+
+        private void RestoreWindowPosition()
+        {
+            if (settings.WindowLeft >= 0 && settings.WindowTop >= 0)
+            {
+                Left = settings.WindowLeft;
+                Top = settings.WindowTop;
+            }
+            else
+            {
+                double screenWidth = SystemParameters.PrimaryScreenWidth;
+                double screenHeight = SystemParameters.PrimaryScreenHeight;
+                Left = (screenWidth - Width) / 2;
+                Top = (screenHeight / 3) - Height - 100;
+            }
+        }
+
+        #endregion
+
+        #region Sentence Animation
 
         private async void AnimateSentence()
         {
@@ -71,6 +152,8 @@ namespace AmuneApp
             {
                 if (sentences.Count == 0)
                 {
+                    UpdateCounter(0, 0);
+                    sentenceTextBlock.Text = "";
                     await Task.Delay(500);
                     continue;
                 }
@@ -78,16 +161,29 @@ namespace AmuneApp
                 if (currentSentenceIndex >= sentences.Count)
                     currentSentenceIndex = 0;
 
+                UpdateCounter(currentSentenceIndex + 1, sentences.Count);
                 string sentence = sentences[currentSentenceIndex];
                 await DisplaySentenceWithTypingAnimation(sentence);
 
                 AppandBlinkingDot();
-                await Task.Delay(3000); // Wait before transitioning to the next sentence
+                await Task.Delay(settings.DisplayTimerSeconds * 1000);
+
                 spTextGrid.Children.Clear();
                 spTextGrid.Children.Add(sentenceTextBlock);
 
                 if (sentences.Count == 0) continue;
-                currentSentenceIndex = (currentSentenceIndex + 1) % sentences.Count;
+
+                if (settings.ShuffleMode && sentences.Count > 1)
+                {
+                    int next;
+                    do { next = random.Next(sentences.Count); }
+                    while (next == currentSentenceIndex);
+                    currentSentenceIndex = next;
+                }
+                else
+                {
+                    currentSentenceIndex = (currentSentenceIndex + 1) % sentences.Count;
+                }
             }
         }
 
@@ -97,28 +193,22 @@ namespace AmuneApp
             foreach (char c in sentence)
             {
                 sentenceTextBlock.Text += c;
-                await Task.Delay(100); // Typing speed
+                await Task.Delay(100);
             }
-
-
-
         }
 
         private async Task AppandBlinkingDot()
         {
-            // Append a blinking dot
-            TextBlock dotTextBlock = new TextBlock();
-            bool isDotted = false;
-            if (isDotted == false)
+            TextBlock dotTextBlock = new TextBlock
             {
-                dotTextBlock.Foreground = sentenceTextBlock.Foreground;
-                dotTextBlock.FontSize = sentenceTextBlock.FontSize;
-                dotTextBlock.FontFamily = sentenceTextBlock.FontFamily;
-                dotTextBlock.FontWeight = sentenceTextBlock.FontWeight;
-                spTextGrid.Children.Add(dotTextBlock);
-                dotTextBlock.Text = ".";
-                isDotted = true;
-            }
+                Foreground = sentenceTextBlock.Foreground,
+                FontSize = sentenceTextBlock.FontSize,
+                FontFamily = sentenceTextBlock.FontFamily,
+                FontWeight = sentenceTextBlock.FontWeight,
+                Text = "."
+            };
+            spTextGrid.Children.Add(dotTextBlock);
+
             Storyboard storyboard = new Storyboard();
             DoubleAnimation blinkAnimation = new DoubleAnimation
             {
@@ -134,6 +224,53 @@ namespace AmuneApp
             storyboard.Begin();
         }
 
+        private void UpdateCounter(int current, int total)
+        {
+            tbCounter.Text = $"{current} / {total}";
+        }
+
+        #endregion
+
+        #region Border Animation
+
+        private void AnimateBorderColor()
+        {
+            LinearGradientBrush brush = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1)
+            };
+
+            GradientStop colorStart = new GradientStop(Colors.AliceBlue, 0.0);
+            GradientStop color1 = new GradientStop(Colors.Magenta, 0.2);
+            GradientStop color2 = new GradientStop(Colors.Cyan, 0.5);
+            GradientStop color3 = new GradientStop(Colors.Gold, 0.8);
+            GradientStop colorEnd = new GradientStop(Colors.AliceBlue, 1.0);
+
+            brush.GradientStops.Add(colorStart);
+            brush.GradientStops.Add(color1);
+            brush.GradientStops.Add(color2);
+            brush.GradientStops.Add(color3);
+            brush.GradientStops.Add(colorEnd);
+
+            rbWindowColor.Stroke = brush;
+
+            DoubleAnimation animation1 = new DoubleAnimation(-0.5, 1.5, new Duration(TimeSpan.FromSeconds(3)))
+            { RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromSeconds(0.1) };
+            DoubleAnimation animation2 = new DoubleAnimation(-0.5, 1.5, new Duration(TimeSpan.FromSeconds(3)))
+            { RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromSeconds(0.5) };
+            DoubleAnimation animation3 = new DoubleAnimation(1.5, -0.5, new Duration(TimeSpan.FromSeconds(3)))
+            { RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromSeconds(2.2) };
+
+            color1.BeginAnimation(GradientStop.OffsetProperty, animation1);
+            color2.BeginAnimation(GradientStop.OffsetProperty, animation2);
+            color3.BeginAnimation(GradientStop.OffsetProperty, animation3);
+        }
+
+        #endregion
+
+        #region Window Events
+
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton == MouseButtonState.Pressed)
@@ -144,66 +281,52 @@ namespace AmuneApp
                     DragMove();
             }
         }
-        private void AnimateBorderColor()
-        {
-            LinearGradientBrush brush = new LinearGradientBrush();
-            brush.StartPoint = new Point(0, 0);
-            brush.EndPoint = new Point(1, 1); // Diagonal gradient
-
-            // Define the gradient stops with additional striking colors
-            GradientStop colorStart = new GradientStop(Colors.AliceBlue, 0.0);
-            GradientStop color1 = new GradientStop(Colors.Magenta, 0.2);
-            GradientStop color2 = new GradientStop(Colors.Cyan, 0.5); // This is the striking color
-            GradientStop color3 = new GradientStop(Colors.Gold, 0.8);
-            GradientStop colorEnd = new GradientStop(Colors.AliceBlue, 1.0);
-
-            brush.GradientStops.Add(colorStart);
-            brush.GradientStops.Add(color1);
-            brush.GradientStops.Add(color2);
-           brush.GradientStops.Add(color3);
-            brush.GradientStops.Add(colorEnd);
-
-            rbWindowColor.Stroke = brush;
-
-            // Animation for moving the striking colors across the border
-            DoubleAnimation animation1 = new DoubleAnimation(-0.5, 1.5, new Duration(TimeSpan.FromSeconds(3)));
-            animation1.RepeatBehavior = RepeatBehavior.Forever;
-            DoubleAnimation animation2 = new DoubleAnimation(-0.5, 1.5, new Duration(TimeSpan.FromSeconds(3)));
-            animation2.RepeatBehavior = RepeatBehavior.Forever;
-            DoubleAnimation animation3 = new DoubleAnimation(1.5, - 0.5, new Duration(TimeSpan.FromSeconds(3)));
-            animation3.RepeatBehavior = RepeatBehavior.Forever;
-
-            // Start the animations with a slight delay between them to create a wave effect
-            animation1.BeginTime = TimeSpan.FromSeconds(0.1);
-            animation2.BeginTime = TimeSpan.FromSeconds(0.5);
-            animation3.BeginTime = TimeSpan.FromSeconds(2.2);
-
-            color1.BeginAnimation(GradientStop.OffsetProperty, animation1);
-            color2.BeginAnimation(GradientStop.OffsetProperty, animation2);
-           color3.BeginAnimation(GradientStop.OffsetProperty, animation3);
-        }
-
-        private void ContextMenu_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-           this.Close();
-           // App.Current.Shutdown();
-            
-        }
-      
-
-        private void SaveListToFile(ObservableCollection<string> items, string sentecePath)
-        {
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(items.ToList());
-            System.IO.File.WriteAllText(sentecePath, json);
-        }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-           
-            SaveListToFile(sentences, sentecePath);
+            if (!isReallyClosing)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+
+            settings.WindowLeft = Left;
+            settings.WindowTop = Top;
+            settings.Save();
+            SaveListToFile(sentences, sentencePath);
+            trayIcon?.Dispose();
         }
 
-        private void TextBlock_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        #endregion
+
+        #region Click to Copy
+
+        private void SentenceTextBlock_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2 && !string.IsNullOrEmpty(sentenceTextBlock.Text))
+            {
+                Clipboard.SetText(sentenceTextBlock.Text);
+                sentenceTextBlock.ToolTip = "✓ Copied!";
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(1.5)
+                };
+                timer.Tick += (s, args) =>
+                {
+                    sentenceTextBlock.ToolTip = "Double-click to copy";
+                    timer.Stop();
+                };
+                timer.Start();
+                e.Handled = true;
+            }
+        }
+
+        #endregion
+
+        #region Sentence Management
+
+        private void EditPusikim_Click(object sender, RoutedEventArgs e)
         {
             popupSp.Children.Clear();
             foreach (var sentence in sentences)
@@ -218,9 +341,10 @@ namespace AmuneApp
             tbAddSentence.Clear();
             addStringPopup.IsOpen = true;
         }
+
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
-            AddNewSentenceFromTextBox(); // flush any text still typed in the input box
+            AddNewSentenceFromTextBox();
 
             sentences.Clear();
             foreach (AddSentenceControle item in popupSp.Children.OfType<AddSentenceControle>())
@@ -230,24 +354,19 @@ namespace AmuneApp
             }
             tbAddSentence.Clear();
             addStringPopup.IsOpen = false;
-            SaveListToFile(sentences, sentecePath);
+            SaveListToFile(sentences, sentencePath);
         }
 
         private void tbAddSentence_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
-                AddNewSentenceFromTextBox();
+            if (e.Key == Key.Enter) AddNewSentenceFromTextBox();
         }
 
-        private void btnAddNew_Click(object sender, RoutedEventArgs e)
-        {
-            AddNewSentenceFromTextBox();
-        }
+        private void btnAddNew_Click(object sender, RoutedEventArgs e) => AddNewSentenceFromTextBox();
 
         private void AddNewSentenceFromTextBox()
         {
             if (string.IsNullOrWhiteSpace(tbAddSentence.Text)) return;
-
             popupSp.Children.Add(new AddSentenceControle
             {
                 ParentStackPanel = popupSp,
@@ -258,39 +377,261 @@ namespace AmuneApp
             tbAddSentence.Focus();
         }
 
+        private void btCancel_Click(object sender, RoutedEventArgs e) => addStringPopup.IsOpen = false;
+
+        #endregion
+
+        #region Timer & Opacity Settings
+
+        private void TimerOption_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && int.TryParse(item.Tag.ToString(), out int seconds))
+            {
+                settings.DisplayTimerSeconds = seconds;
+                settings.Save();
+                UpdateTimerChecked();
+            }
+        }
+
+        private void OpacityOption_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && double.TryParse(item.Tag.ToString(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out double opacity))
+            {
+                settings.WindowOpacity = opacity;
+                Opacity = opacity;
+                settings.Save();
+                UpdateOpacityChecked();
+            }
+        }
+
+        private void UpdateTimerChecked()
+        {
+            foreach (var child in miTimer.Items.OfType<MenuItem>())
+            {
+                if (int.TryParse(child.Tag?.ToString(), out int val))
+                    child.IsChecked = val == settings.DisplayTimerSeconds;
+            }
+        }
+
+        private void UpdateOpacityChecked()
+        {
+            foreach (var child in miOpacity.Items.OfType<MenuItem>())
+            {
+                if (double.TryParse(child.Tag?.ToString(),
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double val))
+                    child.IsChecked = Math.Abs(val - settings.WindowOpacity) < 0.01;
+            }
+        }
+
+        #endregion
+
+        #region Toggle Settings
+
+        private CheckBox StartupCheckBox => miStartOnStartup.Header as CheckBox;
+        private CheckBox ShuffleCheckBox => miShuffle.Header as CheckBox;
+        private CheckBox DarkModeCheckBox => miDarkMode.Header as CheckBox;
+
+        private void miStartOnStartup_Click(object sender, RoutedEventArgs e)
+        {
+            StartupCheckBox.IsChecked = !(StartupCheckBox.IsChecked ?? false);
+            if (StartupCheckBox.IsChecked == true) AddToStartup();
+            else RemoveFromStartup();
+        }
+
+        private void miShuffle_Click(object sender, RoutedEventArgs e)
+        {
+            ShuffleCheckBox.IsChecked = !(ShuffleCheckBox.IsChecked ?? false);
+            settings.ShuffleMode = ShuffleCheckBox.IsChecked == true;
+            settings.Save();
+        }
+
+        private void miDarkMode_Click(object sender, RoutedEventArgs e)
+        {
+            DarkModeCheckBox.IsChecked = !(DarkModeCheckBox.IsChecked ?? false);
+            settings.DarkMode = DarkModeCheckBox.IsChecked == true;
+            ApplyTheme();
+            settings.Save();
+        }
+
+        private void ApplyTheme()
+        {
+            var merged = Application.Current.Resources.MergedDictionaries;
+            for (int i = merged.Count - 1; i >= 0; i--)
+            {
+                if (merged[i] is Wpf.Ui.Markup.ThemesDictionary)
+                    merged.RemoveAt(i);
+            }
+            merged.Insert(0, new Wpf.Ui.Markup.ThemesDictionary
+            {
+                Theme = settings.DarkMode
+                    ? Wpf.Ui.Appearance.ApplicationTheme.Dark
+                    : Wpf.Ui.Appearance.ApplicationTheme.Light
+            });
+        }
+
+        #endregion
+
+        #region Startup
+
         private void AddToStartup()
         {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
             key?.SetValue("AmuneApp", Environment.ProcessPath);
         }
 
         private void RemoveFromStartup()
         {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
             key?.DeleteValue("AmuneApp", false);
         }
 
         private void UpdateStartupCheckboxStatus()
         {
-            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
             if (StartupCheckBox != null)
                 StartupCheckBox.IsChecked = key?.GetValue("AmuneApp") != null;
         }
 
-        private CheckBox StartupCheckBox => miStartOnStartup.Header as CheckBox;
+        #endregion
 
-        private void miStartOnStartup_Click(object sender, RoutedEventArgs e)
+        #region Font & Background
+
+        private void ChangeFont_Click(object sender, RoutedEventArgs e)
         {
-            StartupCheckBox.IsChecked = !(StartupCheckBox.IsChecked ?? false);
-            if (StartupCheckBox.IsChecked == true)
-                AddToStartup();
-            else
-                RemoveFromStartup();
+            var fontDialog = new Forms.FontDialog();
+            try { fontDialog.Font = new System.Drawing.Font(settings.FontFamily, 12); } catch { }
+            if (fontDialog.ShowDialog() == Forms.DialogResult.OK)
+            {
+                settings.FontFamily = fontDialog.Font.FontFamily.Name;
+                sentenceTextBlock.FontFamily = new FontFamily(settings.FontFamily);
+                settings.Save();
+            }
         }
 
-        private void btCancel_Click(object sender, RoutedEventArgs e)
+        private void ChangeBackground_Click(object sender, RoutedEventArgs e)
         {
-            addStringPopup.IsOpen = false;
+            var colorDialog = new Forms.ColorDialog { FullOpen = true };
+            if (colorDialog.ShowDialog() == Forms.DialogResult.OK)
+            {
+                var c = colorDialog.Color;
+                var color = Color.FromArgb(204, c.R, c.G, c.B);
+                windowBgBrush.Color = color;
+                settings.BackgroundColor = color.ToString();
+                settings.Save();
+            }
         }
+
+        #endregion
+
+        #region Import / Export
+
+        private void ImportSentences_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import Sentences",
+                Filter = "JSON files (*.json)|*.json",
+                DefaultExt = ".json"
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    var loaded = LoadListFromFile(dialog.FileName);
+                    if (loaded.Count > 0)
+                    {
+                        sentences = loaded;
+                        SaveListToFile(sentences, sentencePath);
+                        currentSentenceIndex = 0;
+                        MessageBox.Show($"Imported {sentences.Count} sentences.", "AmuneApp",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Import failed: {ex.Message}", "AmuneApp",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void ExportSentences_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export Sentences",
+                Filter = "JSON files (*.json)|*.json",
+                DefaultExt = ".json",
+                FileName = "sentences.json"
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    SaveListToFile(sentences, dialog.FileName);
+                    MessageBox.Show($"Exported {sentences.Count} sentences.", "AmuneApp",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Export failed: {ex.Message}", "AmuneApp",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Quit
+
+        private void QuitApp_Click(object sender, RoutedEventArgs e) => QuitApp();
+
+        private void QuitApp()
+        {
+            isReallyClosing = true;
+            Close();
+        }
+
+        #endregion
+
+        #region Auto-Update
+
+        private async void CheckForUpdatesAsync()
+        {
+            try
+            {
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("AmuneApp/1.0");
+                var response = await client.GetStringAsync(
+                    "https://api.github.com/repos/abamondel/AmuneApp2/releases/latest");
+                var release = JsonConvert.DeserializeObject<dynamic>(response);
+                string latestVersion = ((string)release.tag_name).TrimStart('v');
+                var currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+
+                if (Version.TryParse(latestVersion, out var latest) && latest > currentVersion)
+                {
+                    var result = MessageBox.Show(
+                        $"A new version ({latestVersion}) is available. Open download page?",
+                        "AmuneApp Update", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = (string)release.html_url,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+            }
+            catch { }
+        }
+
+        #endregion
     }
 }
