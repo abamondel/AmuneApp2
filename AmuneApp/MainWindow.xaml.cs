@@ -90,6 +90,7 @@ namespace AmuneApp
             UpdateOpacityChecked();
 
             sentenceTextBlock.FontFamily = new FontFamily(settings.FontFamily);
+            sentenceTextBlock.FontSize = settings.FontSize;
 
             (miShuffle.Header as CheckBox).IsChecked = settings.ShuffleMode;
             (miDarkMode.Header as CheckBox).IsChecked = settings.DarkMode;
@@ -541,11 +542,13 @@ namespace AmuneApp
 
         private void ChangeFont_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new FontPickerDialog(settings.FontFamily, sentenceTextBlock.FontSize);
+            var dialog = new FontPickerDialog(settings.FontFamily, settings.FontSize);
             if (dialog.ShowDialog() == true)
             {
                 settings.FontFamily = dialog.SelectedFontFamily;
+                settings.FontSize = dialog.SelectedFontSize;
                 sentenceTextBlock.FontFamily = new FontFamily(settings.FontFamily);
+                sentenceTextBlock.FontSize = settings.FontSize;
                 settings.Save();
             }
         }

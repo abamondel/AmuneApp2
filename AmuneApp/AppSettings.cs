@@ -13,6 +13,7 @@ namespace AmuneApp
         public int DisplayTimerSeconds { get; set; } = 3;
         public bool ShuffleMode { get; set; } = false;
         public string FontFamily { get; set; } = "David";
+        public double FontSize { get; set; } = 64;
         public bool DarkMode { get; set; } = false;
         public string BackgroundColor { get; set; } = "#CCFFFFFF";
         public bool FloatingEnabled { get; set; } = false;

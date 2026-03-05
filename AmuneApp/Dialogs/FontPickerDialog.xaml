@@ -2,13 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        Title="Choose Font" Width="480" Height="520"
+        Title="Choose Font" Width="500" Height="560"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" AllowsTransparency="True"
-        Background="Transparent" ResizeMode="NoResize">
+        Background="Transparent" ResizeMode="NoResize"
+        MouseDown="Window_MouseDown">
     <Border CornerRadius="12" Padding="20"
-            Background="{DynamicResource SystemChromeMediumColor}"
-            BorderBrush="{DynamicResource SystemAccentColorPrimaryBrush}" BorderThickness="1">
+            Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+            BorderBrush="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="20" Opacity="0.3" ShadowDepth="4"/>
         </Border.Effect>
@@ -18,46 +19,63 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="100"/>
+                <RowDefinition Height="110"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Title -->
+            <!-- Title bar -->
             <TextBlock Grid.Row="0" Text="🔤 Choose Font" FontSize="20" FontWeight="Bold" Margin="0,0,0,12"/>
 
-            <!-- Search -->
-            <TextBox Grid.Row="1" x:Name="tbSearch" FontSize="14"
-                     Margin="0,0,0,8" TextChanged="tbSearch_TextChanged">
-                <TextBox.Style>
-                    <Style TargetType="TextBox">
-                        <Setter Property="Tag" Value="Search fonts..."/>
-                    </Style>
-                </TextBox.Style>
-            </TextBox>
+            <!-- Search box -->
+            <Grid Grid.Row="1" Margin="0,0,0,10">
+                <TextBox x:Name="tbSearch" FontSize="14" Padding="30,6,8,6"
+                         TextChanged="tbSearch_TextChanged"/>
+                <TextBlock Text="🔍" FontSize="14" VerticalAlignment="Center"
+                           Margin="8,0,0,0" IsHitTestVisible="False"
+                           Foreground="Gray"/>
+                <TextBlock x:Name="tbPlaceholder" Text="Search fonts..."
+                           FontSize="14" VerticalAlignment="Center"
+                           Margin="32,0,0,0" IsHitTestVisible="False"
+                           Foreground="Gray" Opacity="0.6"/>
+            </Grid>
 
             <!-- Font list -->
-            <ListBox Grid.Row="2" x:Name="lbFonts" Margin="0,0,0,8"
+            <ListBox Grid.Row="2" x:Name="lbFonts" Margin="0,0,0,10"
                      SelectionChanged="lbFonts_SelectionChanged"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     BorderThickness="1" BorderBrush="LightGray">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding}" FontFamily="{Binding}" FontSize="16" Margin="4,2"/>
+                        <Border Padding="10,8" CornerRadius="6" Margin="2,1">
+                            <TextBlock Text="{Binding}" FontFamily="{Binding}"
+                                       FontSize="18" TextTrimming="CharacterEllipsis"/>
+                        </Border>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
 
             <!-- Size -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Size:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="14"/>
-                <Slider x:Name="slSize" Minimum="8" Maximum="120" Value="64" Width="280"
-                        VerticalAlignment="Center" ValueChanged="slSize_ValueChanged"/>
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10">
+                <TextBlock Text="Size:" VerticalAlignment="Center" Margin="0,0,10,0" FontSize="14"/>
+                <Slider x:Name="slSize" Minimum="8" Maximum="120" Value="64" Width="300"
+                        VerticalAlignment="Center" IsSnapToTickEnabled="True" TickFrequency="1"
+                        ValueChanged="slSize_ValueChanged"/>
                 <TextBlock x:Name="tbSizeValue" Text="64" VerticalAlignment="Center"
-                           Margin="8,0,0,0" FontSize="14" FontWeight="SemiBold" Width="35"/>
+                           Margin="10,0,0,0" FontSize="16" FontWeight="SemiBold" Width="40"/>
             </StackPanel>
 
             <!-- Preview -->
-            <Border Grid.Row="4" CornerRadius="8" Margin="0,0,0,12"
-                    BorderBrush="Gray" BorderThickness="1" Padding="10">
+            <Border Grid.Row="4" CornerRadius="8" Margin="0,0,0,14"
+                    BorderBrush="LightGray" BorderThickness="1" Padding="12"
+                    Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
                 <Viewbox Stretch="Uniform">
                     <TextBlock x:Name="tbPreview" Text="AaBbCc אבגד" FontSize="36"
                                TextAlignment="Center" HorizontalAlignment="Center"
@@ -67,8 +85,8 @@
 
             <!-- Buttons -->
             <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
-                <ui:Button Content="OK" Width="100" Appearance="Primary" Click="OK_Click" Margin="0,0,8,0"/>
-                <ui:Button Content="Cancel" Width="100" Appearance="Secondary" Click="Cancel_Click"/>
+                <ui:Button Content="OK" Width="110" Appearance="Primary" Click="OK_Click" Margin="0,0,8,0"/>
+                <ui:Button Content="Cancel" Width="110" Appearance="Secondary" Click="Cancel_Click"/>
             </StackPanel>
         </Grid>
     </Border>

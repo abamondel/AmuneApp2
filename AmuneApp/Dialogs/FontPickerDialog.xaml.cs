@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace AmuneApp.Dialogs
@@ -25,7 +26,6 @@ namespace AmuneApp.Dialogs
             SelectedFontSize = currentSize;
             slSize.Value = currentSize;
 
-            // Select current font
             var index = allFonts.FindIndex(f =>
                 f.Equals(currentFont, StringComparison.OrdinalIgnoreCase));
             if (index >= 0)
@@ -37,12 +37,25 @@ namespace AmuneApp.Dialogs
             UpdatePreview();
         }
 
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+                DragMove();
+        }
+
         private void tbSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
+            tbPlaceholder.Visibility = string.IsNullOrEmpty(tbSearch.Text)
+                ? Visibility.Visible : Visibility.Collapsed;
+
             var filter = tbSearch.Text?.Trim().ToLower() ?? "";
-            lbFonts.ItemsSource = string.IsNullOrEmpty(filter)
+            var filtered = string.IsNullOrEmpty(filter)
                 ? allFonts
                 : allFonts.Where(f => f.ToLower().Contains(filter)).ToList();
+            lbFonts.ItemsSource = filtered;
+
+            if (filtered.Count > 0 && lbFonts.SelectedItem == null)
+                lbFonts.SelectedIndex = 0;
         }
 
         private void lbFonts_SelectionChanged(object sender, SelectionChangedEventArgs e)
