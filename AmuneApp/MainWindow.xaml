@@ -58,7 +58,7 @@
     </Window.ContextMenu>
     <Grid>
         <Popup x:Name="addStringPopup" Placement="Mouse" AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False">
-            <Border Width="400" CornerRadius="10" Background="#FFDDDDDD" Padding="10">
+            <Border x:Name="popupBorder" Width="400" CornerRadius="10" Background="#FFDDDDDD" Padding="10">
                 <StackPanel>
                     <ScrollViewer Padding="5" MaxHeight="300">
                         <StackPanel x:Name="popupSp"/>

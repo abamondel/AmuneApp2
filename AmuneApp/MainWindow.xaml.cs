@@ -470,6 +470,38 @@ namespace AmuneApp
                     ? Wpf.Ui.Appearance.ApplicationTheme.Dark
                     : Wpf.Ui.Appearance.ApplicationTheme.Light
             });
+
+            // Update popup background for dark/light mode
+            if (popupBorder != null)
+            {
+                popupBorder.Background = new SolidColorBrush(
+                    settings.DarkMode
+                        ? Color.FromRgb(43, 43, 43)
+                        : Color.FromRgb(221, 221, 221));
+            }
+
+            // Update main window background
+            if (windowBgBrush != null)
+            {
+                if (settings.DarkMode)
+                    windowBgBrush.Color = Color.FromArgb(204, 30, 30, 30);
+                else
+                {
+                    try
+                    {
+                        windowBgBrush.Color = (Color)ColorConverter.ConvertFromString(settings.BackgroundColor);
+                    }
+                    catch
+                    {
+                        windowBgBrush.Color = Color.FromArgb(204, 255, 255, 255);
+                    }
+                }
+            }
+
+            // Update counter text color
+            if (tbCounter != null)
+                tbCounter.Foreground = new SolidColorBrush(
+                    settings.DarkMode ? Colors.LightGray : Colors.Gray);
         }
 
         #endregion
@@ -536,14 +568,19 @@ namespace AmuneApp
             var dialog = new OpenFileDialog
             {
                 Title = "Import Sentences",
-                Filter = "JSON files (*.json)|*.json",
+                Filter = "JSON files (*.json)|*.json|Text files (*.txt)|*.txt|All files (*.*)|*.*",
                 DefaultExt = ".json"
             };
             if (dialog.ShowDialog() == true)
             {
                 try
                 {
-                    var loaded = LoadListFromFile(dialog.FileName);
+                    ObservableCollection<string> loaded;
+                    if (dialog.FileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                        loaded = LoadListFromTxtFile(dialog.FileName);
+                    else
+                        loaded = LoadListFromFile(dialog.FileName);
+
                     if (loaded.Count > 0)
                     {
                         sentences = loaded;
@@ -566,15 +603,19 @@ namespace AmuneApp
             var dialog = new SaveFileDialog
             {
                 Title = "Export Sentences",
-                Filter = "JSON files (*.json)|*.json",
+                Filter = "JSON files (*.json)|*.json|Text files (*.txt)|*.txt",
                 DefaultExt = ".json",
-                FileName = "sentences.json"
+                FileName = "sentences"
             };
             if (dialog.ShowDialog() == true)
             {
                 try
                 {
-                    SaveListToFile(sentences, dialog.FileName);
+                    if (dialog.FileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                        File.WriteAllLines(dialog.FileName, sentences);
+                    else
+                        SaveListToFile(sentences, dialog.FileName);
+
                     MessageBox.Show($"Exported {sentences.Count} sentences.", "AmuneApp",
                         MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -584,6 +625,14 @@ namespace AmuneApp
                         MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
+        }
+
+        private ObservableCollection<string> LoadListFromTxtFile(string path)
+        {
+            var lines = File.ReadAllLines(path)
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Select(l => l.Trim());
+            return new ObservableCollection<string>(lines);
         }
 
         #endregion
