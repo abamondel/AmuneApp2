@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Newtonsoft.Json;
 using AmuneApp.UserControls;
+using AmuneApp.Dialogs;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
@@ -28,6 +29,7 @@ namespace AmuneApp
         private Forms.NotifyIcon trayIcon;
         private readonly Random random = new();
         private bool isReallyClosing = false;
+        private System.Windows.Threading.DispatcherTimer floatingTimer;
 
         public MainWindow()
         {
@@ -42,6 +44,7 @@ namespace AmuneApp
             AnimateBorderColor();
             RestoreWindowPosition();
             UpdateStartupCheckboxStatus();
+            SetupFloatingTimer();
             CheckForUpdatesAsync();
 
             Deactivated += (s, e) => addStringPopup.IsOpen = false;
@@ -90,6 +93,8 @@ namespace AmuneApp
 
             (miShuffle.Header as CheckBox).IsChecked = settings.ShuffleMode;
             (miDarkMode.Header as CheckBox).IsChecked = settings.DarkMode;
+            (miFloating.Header as CheckBox).IsChecked = settings.FloatingEnabled;
+            UpdateFloatingIntervalChecked();
             ApplyTheme();
 
             try
@@ -536,11 +541,10 @@ namespace AmuneApp
 
         private void ChangeFont_Click(object sender, RoutedEventArgs e)
         {
-            var fontDialog = new Forms.FontDialog();
-            try { fontDialog.Font = new System.Drawing.Font(settings.FontFamily, 12); } catch { }
-            if (fontDialog.ShowDialog() == Forms.DialogResult.OK)
+            var dialog = new FontPickerDialog(settings.FontFamily, sentenceTextBlock.FontSize);
+            if (dialog.ShowDialog() == true)
             {
-                settings.FontFamily = fontDialog.Font.FontFamily.Name;
+                settings.FontFamily = dialog.SelectedFontFamily;
                 sentenceTextBlock.FontFamily = new FontFamily(settings.FontFamily);
                 settings.Save();
             }
@@ -548,10 +552,14 @@ namespace AmuneApp
 
         private void ChangeBackground_Click(object sender, RoutedEventArgs e)
         {
-            var colorDialog = new Forms.ColorDialog { FullOpen = true };
-            if (colorDialog.ShowDialog() == Forms.DialogResult.OK)
+            Color currentColor;
+            try { currentColor = (Color)ColorConverter.ConvertFromString(settings.BackgroundColor); }
+            catch { currentColor = Color.FromArgb(204, 255, 255, 255); }
+
+            var dialog = new ColorPickerDialog(Color.FromRgb(currentColor.R, currentColor.G, currentColor.B));
+            if (dialog.ShowDialog() == true)
             {
-                var c = colorDialog.Color;
+                var c = dialog.SelectedColor;
                 var color = Color.FromArgb(204, c.R, c.G, c.B);
                 windowBgBrush.Color = color;
                 settings.BackgroundColor = color.ToString();
@@ -565,7 +573,7 @@ namespace AmuneApp
 
         private void ImportSentences_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFileDialog
+            var dialog = new Microsoft.Win32.OpenFileDialog
             {
                 Title = "Import Sentences",
                 Filter = "JSON files (*.json)|*.json|Text files (*.txt)|*.txt|All files (*.*)|*.*",
@@ -600,7 +608,7 @@ namespace AmuneApp
 
         private void ExportSentences_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new SaveFileDialog
+            var dialog = new Microsoft.Win32.SaveFileDialog
             {
                 Title = "Export Sentences",
                 Filter = "JSON files (*.json)|*.json|Text files (*.txt)|*.txt",
@@ -633,6 +641,66 @@ namespace AmuneApp
                 .Where(l => !string.IsNullOrWhiteSpace(l))
                 .Select(l => l.Trim());
             return new ObservableCollection<string>(lines);
+        }
+
+        #endregion
+
+        #region Floating Pusikim
+
+        private void SetupFloatingTimer()
+        {
+            floatingTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMinutes(settings.FloatingIntervalMinutes)
+            };
+            floatingTimer.Tick += (s, e) => ShowFloatingText();
+
+            if (settings.FloatingEnabled)
+                floatingTimer.Start();
+        }
+
+        private void ShowFloatingText()
+        {
+            if (sentences.Count == 0) return;
+
+            string sentence = sentences[random.Next(sentences.Count)];
+            var floatingWindow = new FloatingTextWindow(sentence, settings.FontFamily);
+            floatingWindow.Show();
+        }
+
+        private CheckBox FloatingCheckBox => miFloating.Header as CheckBox;
+
+        private void miFloating_Click(object sender, RoutedEventArgs e)
+        {
+            FloatingCheckBox.IsChecked = !(FloatingCheckBox.IsChecked ?? false);
+            settings.FloatingEnabled = FloatingCheckBox.IsChecked == true;
+
+            if (settings.FloatingEnabled)
+                floatingTimer.Start();
+            else
+                floatingTimer.Stop();
+
+            settings.Save();
+        }
+
+        private void FloatingInterval_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem item && int.TryParse(item.Tag.ToString(), out int minutes))
+            {
+                settings.FloatingIntervalMinutes = minutes;
+                floatingTimer.Interval = TimeSpan.FromMinutes(minutes);
+                settings.Save();
+                UpdateFloatingIntervalChecked();
+            }
+        }
+
+        private void UpdateFloatingIntervalChecked()
+        {
+            foreach (var child in miFloatingInterval.Items.OfType<MenuItem>())
+            {
+                if (int.TryParse(child.Tag?.ToString(), out int val))
+                    child.IsChecked = val == settings.FloatingIntervalMinutes;
+            }
         }
 
         #endregion

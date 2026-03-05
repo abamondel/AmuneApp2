@@ -47,6 +47,20 @@
                 </MenuItem.Header>
             </MenuItem>
             <Separator/>
+            <MenuItem x:Name="miFloating" Click="miFloating_Click">
+                <MenuItem.Header>
+                    <CheckBox Content="🌊 Floating Pusikim" IsHitTestVisible="False" VerticalAlignment="Center"/>
+                </MenuItem.Header>
+            </MenuItem>
+            <MenuItem x:Name="miFloatingInterval" Header="🕐 Floating Interval">
+                <MenuItem Header="5 minutes" Tag="5" Click="FloatingInterval_Click"/>
+                <MenuItem Header="10 minutes" Tag="10" Click="FloatingInterval_Click"/>
+                <MenuItem Header="15 minutes" Tag="15" Click="FloatingInterval_Click"/>
+                <MenuItem Header="30 minutes" Tag="30" Click="FloatingInterval_Click"/>
+                <MenuItem Header="1 hour" Tag="60" Click="FloatingInterval_Click"/>
+                <MenuItem Header="2 hours" Tag="120" Click="FloatingInterval_Click"/>
+            </MenuItem>
+            <Separator/>
             <MenuItem Header="🔤 Change Font..." Click="ChangeFont_Click"/>
             <MenuItem Header="🎨 Background Color..." Click="ChangeBackground_Click"/>
             <Separator/>

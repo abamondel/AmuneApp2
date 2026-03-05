@@ -15,6 +15,8 @@ namespace AmuneApp
         public string FontFamily { get; set; } = "David";
         public bool DarkMode { get; set; } = false;
         public string BackgroundColor { get; set; } = "#CCFFFFFF";
+        public bool FloatingEnabled { get; set; } = false;
+        public int FloatingIntervalMinutes { get; set; } = 30;
 
         public void Save()
         {
