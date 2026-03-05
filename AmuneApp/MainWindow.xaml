@@ -9,47 +9,60 @@
         MouseDown="Window_MouseDown" 
         Closing="Window_Closing"
         AllowsTransparency="True" Background="#00A9A9A9" Opacity="1">
-    <Window.ContextMenu >
-
-        <ContextMenu >
+    <Window.ContextMenu>
+        <ContextMenu>
             <TextBlock PreviewMouseLeftButtonUp="TextBlock_PreviewMouseLeftButtonUp">Add Pusik</TextBlock>
+            <Separator/>
+            <MenuItem x:Name="miStartOnStartup"
+                      Header="Start on PC Startup"
+                      IsCheckable="True"
+                      Checked="miStartOnStartup_Checked"
+                      Unchecked="miStartOnStartup_Unchecked" />
             <Separator/>
             <TextBlock PreviewMouseLeftButtonUp="ContextMenu_MouseLeftButtonUp">Quit</TextBlock>
         </ContextMenu>
     </Window.ContextMenu>
     <Grid >
         
-        <Popup  x:Name="addStringPopup" Placement="Mouse" AllowsTransparency="True" PopupAnimation="Fade">
-            
+        <Popup x:Name="addStringPopup" Placement="Mouse" AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False">
             <Border Width="400" CornerRadius="10" Background="#FFDDDDDD" Padding="10">
-                <StackPanel   >
-                    <ScrollViewer Padding="15" MaxHeight="400" >
-                        <StackPanel Background="Purple" x:Name="popupSp">
-                            <StackPanel
-    x:Name="stNewSentence"
-    Margin="0,5,0,5"
-    HorizontalAlignment="Stretch"
-    Orientation="Horizontal">
-                                <TextBox
-        x:Name="tbAddSentence"
-        Width="300"
-        Margin="5,0,5,0"
-        HorizontalAlignment="Stretch"
-        FontSize="18"
-        FontWeight="SemiBold"
-        TextAlignment="Right"
-        TextChanged="tbAddSentence_TextChanged" />
-
-
-                            </StackPanel>
-                        </StackPanel>
-                    
+                <StackPanel>
+                    <!-- Existing sentences list -->
+                    <ScrollViewer Padding="5" MaxHeight="300">
+                        <StackPanel x:Name="popupSp" />
                     </ScrollViewer>
-                    <Separator x:Name="popupSeparator" Margin="0,10,0,5"/>
-                    <Button x:Name="btSaveSentence" Margin="0,5,0,5"  HorizontalAlignment="Center" Width="100" Content="Add" Click="AddButton_Click" />
+
+                    <!-- Add new sentence row -->
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4" x:Name="stNewSentence">
+                        <TextBox x:Name="tbAddSentence"
+                                 Width="320"
+                                 Margin="5,0,5,0"
+                                 FontSize="18"
+                                 FontWeight="SemiBold"
+                                 TextAlignment="Right"
+                                 KeyDown="tbAddSentence_KeyDown" />
+                        <Button Content="+" FontSize="18" FontWeight="Bold"
+                                Width="35" Height="35"
+                                Click="btnAddNew_Click" />
+                    </StackPanel>
+
+                    <Separator x:Name="popupSeparator" Margin="0,8,0,5" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <ui:Button x:Name="btSaveSentence"
+                                Margin="5,5,5,5"
+                                Width="100"
+                                Content="Save"
+                                Appearance="Primary"
+                                Click="AddButton_Click" />
+                        <ui:Button x:Name="btCancel"
+                                Margin="5,5,5,5"
+                                Width="100"
+                                Content="Cancel"
+                                Appearance="Secondary"
+                                Click="btCancel_Click" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
-          
         </Popup>
 
         <Rectangle StrokeThickness="4" x:Name="rbWindowColor"  Fill="#CCFFFFFF" RadiusX="25" RadiusY="25" >

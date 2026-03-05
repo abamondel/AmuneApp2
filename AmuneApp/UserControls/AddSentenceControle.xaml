@@ -10,10 +10,8 @@
              >
     <Grid>
         <StackPanel Margin="0,5,0,5"   HorizontalAlignment="Stretch" Width="{Binding ElementName=popupSp }" Orientation="Horizontal">
-            <TextBox x:Name="tbAddSentence" Width="300"  TextAlignment="Right" FontSize="18" FontWeight="SemiBold" Margin="5,0,5,0" HorizontalAlignment="Stretch"  />
-            <Button HorizontalAlignment="Right" x:Name="btnDelete" >
-               
-            </Button>
+            <TextBox x:Name="tbAddSentence" Width="300" TextAlignment="Right" FontSize="18" FontWeight="SemiBold" Margin="5,0,5,0" HorizontalAlignment="Stretch" />
+            <Button x:Name="btnDelete" Content="✕" Foreground="Red" Background="Transparent" BorderThickness="0" FontSize="14" FontWeight="Bold" Cursor="Hand" Click="btnDelete_Click" />
         </StackPanel>
     </Grid>
 </UserControl>

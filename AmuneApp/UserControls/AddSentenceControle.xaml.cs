@@ -15,14 +15,24 @@ using System.Windows.Shapes;
 
 namespace AmuneApp.UserControls
 {
-    /// <summary>
-    /// Interaction logic for AddSentenceControle.xaml
-    /// </summary>
     public partial class AddSentenceControle : UserControl
     {
+        public StackPanel ParentStackPanel { get; set; }
+
+        public string Text
+        {
+            get => tbAddSentence.Text;
+            set => tbAddSentence.Text = value;
+        }
+
         public AddSentenceControle()
         {
             InitializeComponent();
+        }
+
+        private void btnDelete_Click(object sender, RoutedEventArgs e)
+        {
+            ParentStackPanel?.Children.Remove(this);
         }
     }
 }

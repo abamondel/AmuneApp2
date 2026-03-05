@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Newtonsoft.Json;
 using AmuneApp.UserControls;
+using Microsoft.Win32;
 
 namespace AmuneApp
 {
@@ -46,6 +47,8 @@ namespace AmuneApp
             this.Left = (screenWidth/2) - this.Width /2;
             this.Top = ((screenHeight/3 ) - this.Height) -  100;
 
+            UpdateStartupCheckboxStatus();
+            Deactivated += (s, e) => addStringPopup.IsOpen = false;
         }
        
 
@@ -66,6 +69,15 @@ namespace AmuneApp
         {
             while (true)
             {
+                if (sentences.Count == 0)
+                {
+                    await Task.Delay(500);
+                    continue;
+                }
+
+                if (currentSentenceIndex >= sentences.Count)
+                    currentSentenceIndex = 0;
+
                 string sentence = sentences[currentSentenceIndex];
                 await DisplaySentenceWithTypingAnimation(sentence);
 
@@ -122,8 +134,13 @@ namespace AmuneApp
 
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if(e.LeftButton == MouseButtonState.Pressed)
-              this.DragMove();
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                if (addStringPopup.IsOpen && !addStringPopup.IsMouseOver)
+                    addStringPopup.IsOpen = false;
+                else
+                    DragMove();
+            }
         }
         private void AnimateBorderColor()
         {
@@ -186,34 +203,86 @@ namespace AmuneApp
 
         private void TextBlock_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            var i = 0;
-            //popupSp.Children.Clear();
-            //popupSp.Children.Add(tbAddSentence);
-            
-            // Show the popup for adding a string
-            foreach (var item in sentences)
+            popupSp.Children.Clear();
+            foreach (var sentence in sentences)
             {
-                
-            addStringPopup.IsOpen = true;
-            TextBox textBox = new TextBox();
-            textBox.Margin = new Thickness(0,5,0,5);
-            textBox.FontWeight = FontWeights.SemiBold;
-            textBox.FontSize = 18;
-            textBox.TextAlignment = TextAlignment.Right;
-            textBox.Text = sentences[i];
-            textBox.HorizontalAlignment = HorizontalAlignment.Stretch;
-            popupSp.Children.Insert(0,textBox);
-                i++;
+                popupSp.Children.Add(new AddSentenceControle
+                {
+                    ParentStackPanel = popupSp,
+                    Text = sentence,
+                    HorizontalAlignment = HorizontalAlignment.Stretch
+                });
             }
+            tbAddSentence.Clear();
+            addStringPopup.IsOpen = true;
         }
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
-            // Add the string from the TextBox to the list and close the popup
-            sentences.Add(tbAddSentence.Text);
+            sentences.Clear();
+            foreach (AddSentenceControle item in popupSp.Children.OfType<AddSentenceControle>())
+            {
+                if (!string.IsNullOrWhiteSpace(item.Text))
+                    sentences.Add(item.Text.Trim());
+            }
             tbAddSentence.Clear();
             addStringPopup.IsOpen = false;
+        }
 
-            // Optionally, do something with the string list here
+        private void tbAddSentence_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+                AddNewSentenceFromTextBox();
+        }
+
+        private void btnAddNew_Click(object sender, RoutedEventArgs e)
+        {
+            AddNewSentenceFromTextBox();
+        }
+
+        private void AddNewSentenceFromTextBox()
+        {
+            if (string.IsNullOrWhiteSpace(tbAddSentence.Text)) return;
+
+            popupSp.Children.Add(new AddSentenceControle
+            {
+                ParentStackPanel = popupSp,
+                Text = tbAddSentence.Text.Trim(),
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            });
+            tbAddSentence.Clear();
+            tbAddSentence.Focus();
+        }
+
+        private void AddToStartup()
+        {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            key?.SetValue("AmuneApp", Environment.ProcessPath);
+        }
+
+        private void RemoveFromStartup()
+        {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            key?.DeleteValue("AmuneApp", false);
+        }
+
+        private void UpdateStartupCheckboxStatus()
+        {
+            using RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
+            miStartOnStartup.IsChecked = key?.GetValue("AmuneApp") != null;
+        }
+
+        private void miStartOnStartup_Checked(object sender, RoutedEventArgs e) => AddToStartup();
+        private void miStartOnStartup_Unchecked(object sender, RoutedEventArgs e) => RemoveFromStartup();
+
+        private void btCancel_Click(object sender, RoutedEventArgs e)
+        {
+            addStringPopup.IsOpen = false;
+        }
+
+        private void MenuItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!miStartOnStartup.IsMouseOver)
+                miStartOnStartup.IsChecked = !miStartOnStartup.IsChecked;
         }
     }
 }
