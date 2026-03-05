@@ -33,7 +33,7 @@ namespace AmuneApp
             else
             {
                 System.IO.Directory.CreateDirectory(@"C:\ProgramData\AmuneApp\");
-                File.Create(sentecePath);
+                File.Create(sentecePath).Close();
             }
 
 
@@ -85,6 +85,8 @@ namespace AmuneApp
                 await Task.Delay(3000); // Wait before transitioning to the next sentence
                 spTextGrid.Children.Clear();
                 spTextGrid.Children.Add(sentenceTextBlock);
+
+                if (sentences.Count == 0) continue;
                 currentSentenceIndex = (currentSentenceIndex + 1) % sentences.Count;
             }
         }
@@ -218,6 +220,8 @@ namespace AmuneApp
         }
         private void AddButton_Click(object sender, RoutedEventArgs e)
         {
+            AddNewSentenceFromTextBox(); // flush any text still typed in the input box
+
             sentences.Clear();
             foreach (AddSentenceControle item in popupSp.Children.OfType<AddSentenceControle>())
             {
@@ -226,6 +230,7 @@ namespace AmuneApp
             }
             tbAddSentence.Clear();
             addStringPopup.IsOpen = false;
+            SaveListToFile(sentences, sentecePath);
         }
 
         private void tbAddSentence_KeyDown(object sender, KeyEventArgs e)
